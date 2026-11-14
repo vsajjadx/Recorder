@@ -3,11 +3,13 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using Forms = System.Windows.Forms;
+using NAudio.Wave;
 
 namespace Recorder;
 public partial class MainWindow : Window
 {
     private Process? _ffmpeg;
+    private WasapiLoopbackCapture? _loopback;
     private readonly int _width, _height, _fps;
     public MainWindow()
     {
@@ -18,13 +20,18 @@ public partial class MainWindow : Window
     }
     private void Record_Click(object sender, RoutedEventArgs e)
     {
-        if (_ffmpeg is not null && !_ffmpeg.HasExited) { _ffmpeg.Kill(); _ffmpeg = null; RecordButton.Content = "START RECORDING"; StatusText.Text = "Saved"; return; }
+        if (_ffmpeg is not null && !_ffmpeg.HasExited) { _loopback?.StopRecording(); _loopback?.Dispose(); _loopback = null; _ffmpeg.StandardInput.Close(); _ffmpeg.WaitForExit(5000); if (!_ffmpeg.HasExited) _ffmpeg.Kill(); _ffmpeg = null; RecordButton.Content = "START RECORDING"; StatusText.Text = "Saved"; return; }
         Directory.CreateDirectory(PathBox.Text);
         var file = Path.Combine(PathBox.Text, $"Recording_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
         var exe = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
         if (!File.Exists(exe)) { System.Windows.MessageBox.Show("ffmpeg.exe is missing. Run tools\\prepare-ffmpeg.ps1 first.", "Recorder", MessageBoxButton.OK, MessageBoxImage.Error); return; }
-        var args = $"-y -f gdigrab -framerate {_fps} -video_size {_width}x{_height} -draw_mouse 1 -i desktop -c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p -movflags +faststart \"{file}\"";
-        _ffmpeg = Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false, CreateNoWindow = true });
+        var args = $"-y -f gdigrab -framerate {_fps} -video_size {_width}x{_height} -draw_mouse 1 -i desktop -f f32le -ar 48000 -ac 2 -i pipe:0 -map 0:v:0 -map 1:a:0 -c:v libx264 -preset veryfast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart \"{file}\"";
+        _ffmpeg = Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true });
+        if (_ffmpeg is null) return;
+        _loopback = new WasapiLoopbackCapture();
+        _loopback.DataAvailable += (_, data) => { try { _ffmpeg?.StandardInput.BaseStream.Write(data.Buffer, 0, data.BytesRecorded); _ffmpeg?.StandardInput.BaseStream.Flush(); } catch { } };
+        _loopback.RecordingStopped += (_, _) => { try { _ffmpeg?.StandardInput.Close(); } catch { } };
+        _loopback.StartRecording();
         RecordButton.Content = "STOP & SAVE"; RecordButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(210,70,85)); StatusText.Text = "Recording…";
     }
 }

@@ -9,4 +9,7 @@
     <AssemblyName>Recorder</AssemblyName>
     <RootNamespace>Recorder</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
 </Project>
