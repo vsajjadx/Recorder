@@ -2,3 +2,9 @@ bin/
 obj/
 build/
 *.user
+ffmpeg.exe
+ffprobe.exe
+*.partial.mkv
+*.partial.mp4
+tests/bin/
+tests/obj/

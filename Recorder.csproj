@@ -8,8 +8,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Recorder</AssemblyName>
     <RootNamespace>Recorder</RootNamespace>
+    <Version>1.1.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <DefaultItemExcludes>$(DefaultItemExcludes);build/**;tests/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
 </Project>
